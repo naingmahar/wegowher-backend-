@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <!-- MDB -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.2.0/mdb.min.css" rel="stylesheet" />
+
+    <link href="./style.css" rel="stylesheet" />
+</head>
+
+
+<body>
+    <section style="background-color: #eee;">
+        <div class="container py-5">
+      
+          <div class="row">
+      
+            <div class="col-md-6 col-lg-12 col-xl-12">
+      
+              <ul class="list-unstyled" id="reply">
+              </ul>
+
+              <ul class="list-unstyled">
+                <li class="bg-white mb-3">
+                  <div data-mdb-input-init class="form-outline">
+                    <textarea class="form-control" id="message" rows="4"></textarea>
+                    <label class="form-label" for="message">Message</label>
+                  </div>
+                </li>
+                <button  type="button" data-mdb-button-init data-mdb-ripple-init class="btn btn-info btn-rounded float-end" id="send">Send</button>
+              </ul>
+      
+            </div>
+      
+          </div>
+      
+        </div>
+      </section>
+</body>
+<script
+  src="https://code.jquery.com/jquery-3.7.1.min.js"
+  integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+  crossorigin="anonymous"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.2.0/mdb.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js" integrity="sha512-luMnTJZ7oEchNDZAtQhgjomP1eZefnl82ruTH/3Oj/Yu5qYtwL7+dVRccACS/Snp1lFXq188XFipHKYE75IaQQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js" integrity="sha512-a+SUDuwNzXDvz4XrIcXHuCf089/iJAoN4lmrXJg18XnduKK6YlDHNRalv4yd1N40OKI80tFidF+rqTFKGPoWFQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
+
+
+<script type="text/javascript">
+
+const socket = io("localhost:3000")
+let SECRET_KEY = ""
+
+class Post {
+  constructor(  
+    message,
+    channelId,
+    id = socket.io.engine.id,
+    name = "Unkown",
+    created= Date.now(),
+  ){return {message,channelId,name,created,id}}
+}
+
+class IPost { 
+    message = ""
+    channelId = ""
+    id = ""
+    name = ""
+    created= 0
+}
+
+
+
+/** 
+ * @param msg {string} 
+ * @returns  {IPost}
+*/
+function ResPost(msg){
+  return JSON.parse(msg)
+}
+
+const sendMessage = (message) => {
+  socket.emit('GLOBAL', message )
+}
+
+const makeMessage = (message,channelId) => {
+  const newPost = new Post(message,channelId)
+  var ciphertext = CryptoJS.AES.encrypt(JSON.stringify(newPost), SECRET_KEY).toString();
+  return ciphertext
+}
+
+const decryptMessage = (ciphertext) => {
+  var bytes  = CryptoJS.AES.decrypt(ciphertext, channelId);
+  var originalText = bytes.toString(CryptoJS.enc.Utf8);
+  return originalText
+}
+
+const init = () => {
+  socket.emit('KEY_GEN', {})
+}
+
+let channelId =  window.location.href.search("usa") >= 0 ? 'ChannelUSA' : 'ChannelChina'
+
+
+  $(document).ready(()=>{
+
+    init();
+
+    socket.on('SECRET', (val) => {
+      SECRET_KEY = val
+    })
+
+    socket.on(channelId, (val) => {
+      console.log("Val",val)
+      let msg = decryptMessage(val)
+      if(msg) generateMessageUi(msg)
+    })
+
+
+    $('#send').on('click',()=>{
+      let rawMessage = $("#message").val();
+      let message = makeMessage(rawMessage,channelId)
+      console.log("Message",message)
+      sendMessage(message)
+    })
+  })
+
+
+
+const generateMessageUi = (msg) => {
+
+  let resPost =  ResPost(msg);
+
+  console.log("resPost",resPost,socket.io.engine.id)
+
+  var duration = moment.duration(moment().diff(resPost.created));
+  var minutes = Math.floor(duration.asMinutes());
+
+  const selfMessage = () => {
+    return(
+      `
+      <li class="d-flex mb-4">
+        <img src="https://img.freepik.com/premium-vector/me-monogram-logo-design-letter-text-name-symbol-monochrome-logotype-alphabet-character-simple-logo_955145-2634.jpg" alt="avatar"
+          class="rounded-circle d-flex align-self-start me-3 shadow-1-strong" width="60" height="60">
+        <div class="card" style="width: 70vw;">
+          <div class="card-header d-flex justify-content-between p-3">
+            <p class="fw-bold mb-0">ME</p>
+            <p class="text-muted small mb-0"><i class="far fa-clock"></i> ${minutes} mins ago</p>
+          </div>
+          <div class="card-body">
+            <p class="mb-0">${resPost.message} </p>
+          </div>
+        </div>
+      </li>
+      `
+    )
+  } 
+
+  const otherMessage = () => {
+    return(
+      `
+      <li class="d-flex justify-content-end mb-4">
+        <img src="https://static.vecteezy.com/system/resources/previews/008/386/596/non_2x/un-or-nu-initial-letter-logo-design-vector.jpg" alt="avatar"
+          class="rounded-circle d-flex align-self-start me-3 shadow-1-strong" width="60" height="60">
+        <div class="card" style="width: 70vw;">
+          <div class="card-header d-flex justify-content-between p-3">
+            <p class="fw-bold mb-0">${resPost.name} </p>
+            <p class="text-muted small mb-0"><i class="far fa-clock"></i> ${minutes} mins ago</p>
+          </div>
+          <div class="card-body">
+            <p class="mb-0">${resPost.message}</p>
+          </div>
+        </div>
+      </li>
+      `
+    )
+  } 
+
+  if(resPost.id == socket.io.engine.id){
+    $("#reply").append(selfMessage())
+  }else{
+    $("#reply").append(otherMessage())
+  }
+
+   
+}
+</script>
+
+</html>

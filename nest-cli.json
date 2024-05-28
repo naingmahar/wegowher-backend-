@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/postal/src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "webpack": true,
+    "tsConfigPath": "apps/postal/tsconfig.app.json"
+  },
+  "monorepo": true,
+  "root": "apps/postal",
+  "projects": {
+    "postal": {
+      "type": "application",
+      "root": "apps/postal",
+      "entryFile": "main",
+      "sourceRoot": "apps/postal/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/postal/tsconfig.app.json"
+      }
+    },
+    "exchange": {
+      "type": "application",
+      "root": "apps/exchange",
+      "entryFile": "main",
+      "sourceRoot": "apps/exchange/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/exchange/tsconfig.app.json"
+      }
+    },
+    "classifier": {
+      "type": "application",
+      "root": "apps/classifier",
+      "entryFile": "main",
+      "sourceRoot": "apps/classifier/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/classifier/tsconfig.app.json"
+      }
+    }
+  }
+}

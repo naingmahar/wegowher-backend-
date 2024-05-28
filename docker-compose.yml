@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+
+  classifier:
+    build:
+      context: .
+      dockerfile: ./apps/classifier/Dockerfile
+      target: development
+    command: npm run start:dev classifier
+    env_file:
+      - ./apps/classifier/.env
+    depends_on:
+      - rabbitmq
+      - sqlite-db
+    volumes:
+      - /usr/src/app
+      - /usr/src/app/node_modules
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_QUEUE=myqueue
+      - RABBITMQ_PREFETCH_COUNT=1
+      - SOCKET_PORT=3000
+      - SOCKET_PATH=/socket.io
+      - SQLITE_DB_FILE=/data/mydatabase.db
+    volumes:
+      - ./:/usr/src/app
+      - data-volume:/data
+    depends_on:
+      - rabbitmq
+      - sqlite-db
+
+  rabbitmq:
+    image: "rabbitmq:3-management"
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    volumes:
+      - rabbitmq-volume:/var/lib/rabbitmq
+
+  sqlite-db:
+    image: "nouchka/sqlite3:latest"
+    volumes:
+      - ./database:/var/lib/sqlite/db
+    environment:
+      - SQLITE_USER=sqlite
+      - SQLITE_PASSWORD=sqlite
+      - SQLITE_DB=mydatabase.db
+    ports:
+      - 5432:5432
+
+volumes:
+  rabbitmq-volume:
+  data-volume:
